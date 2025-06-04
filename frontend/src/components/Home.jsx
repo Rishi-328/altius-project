@@ -2,7 +2,9 @@ import React from 'react'
 
 function Home() {
   return (
-    <div>Home</div>
+    <div className="mt-5 p-5">
+      Home
+    </div>
   )
 }
 
