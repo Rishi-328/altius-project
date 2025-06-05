@@ -5,6 +5,7 @@ from flask_pymongo import PyMongo
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 app.config['MONGO_URI'] = 'mongodb://localhost:27017/altiusinter'
@@ -15,6 +16,54 @@ bcrypt = Bcrypt(app)
 CORS(app)
 
 users = mongo.db.users
+# ...existing code...
+
+posts = mongo.db.posts
+
+@app.route('/posts', methods=['POST'])
+def create_post():
+    data = request.get_json()
+    title = data.get('title')
+    description = data.get('description')
+    if not title or not description:
+        return jsonify({'message': 'Title and description required'}), 400
+    post_id = posts.insert_one({'title': title, 'description': description}).inserted_id
+    return jsonify({'message': 'Post created', 'id': str(post_id)}), 201
+
+@app.route('/posts', methods=['GET'])
+def get_posts():
+    all_posts = []
+    for post in posts.find():
+        all_posts.append({
+            'id': str(post['_id']),
+            'title': post['title'],
+            'description': post['description']
+        })
+    return jsonify(all_posts), 200
+
+@app.route('/posts/<post_id>', methods=['PUT'])
+def update_post(post_id):
+    data = request.get_json()
+    title = data.get('title')
+    description = data.get('description')
+    if not title or not description:
+        return jsonify({'message': 'Title and description required'}), 400
+    result = posts.update_one(
+        {'_id': mongo.db.ObjectId(post_id)},
+        {'$set': {'title': title, 'description': description}}
+    )
+    if result.matched_count == 0:
+        return jsonify({'message': 'Post not found'}), 404
+    return jsonify({'message': 'Post updated'}), 200
+
+@app.route('/posts/<post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    result = posts.delete_one({'_id': mongo.db.ObjectId(post_id)})
+    if result.deleted_count == 0:
+        return jsonify({'message': 'Post not found'}), 404
+    return jsonify({'message': 'Post deleted'}), 200
+
+# ...existing code...
 
 def token_required(f):
     @wraps(f)
